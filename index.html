@@ -3,177 +3,159 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EduQuery | Interactive MCQ Mastery</title>
+<title>EduQuery MCQ</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: 'Inter', sans-serif; background:#0f172a; color:#f8fafc; }
-.glass { background:rgba(30,41,59,0.7); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); }
+body { background:#0f172a; color:#fff; font-family:sans-serif; }
 .hidden { display:none; }
 </style>
 </head>
 
-<body class="min-h-screen flex flex-col items-center p-4">
+<body class="p-6">
 
-<header class="text-center my-10">
-<h1 class="text-4xl font-bold text-blue-400">EduQuery</h1>
-<p class="text-slate-400">MCQ Practice System</p>
-</header>
+<h1 class="text-3xl mb-6 text-center text-blue-400">EduQuery Quiz</h1>
 
-<main class="w-full max-w-2xl glass p-6 rounded-xl">
-
-<!-- SETUP -->
 <div id="setup">
-<h2 class="text-xl mb-4">Select Subject</h2>
-<div id="subjects" class="grid grid-cols-2 gap-3 mb-6"></div>
+<select id="subject" class="p-2 mb-4 bg-slate-700">
+<option value="islamic">Islamic</option>
+<option value="general_knowledge">General Knowledge</option>
+<option value="current_affairs">Current Affairs</option>
+<option value="maths">Maths</option>
+<option value="english">English</option>
+</select>
 
-<label>Questions: <span id="countVal">10</span></label>
-<input type="range" id="count" min="5" max="50" step="5" value="10" class="w-full mb-6">
-
-<button id="startBtn" onclick="startQuiz()" disabled class="w-full bg-blue-600 py-3 rounded opacity-50">Start Quiz</button>
+<button onclick="startQuiz()" class="bg-blue-600 px-4 py-2 rounded">Start</button>
 </div>
 
-<!-- QUIZ -->
 <div id="quiz" class="hidden">
-<h3 id="qText" class="mb-6 text-lg"></h3>
+<h2 id="qText" class="mb-4"></h2>
 <div id="opts"></div>
 </div>
 
-<!-- RESULT -->
 <div id="result" class="hidden text-center">
-<h2 id="scoreText" class="text-2xl mb-4"></h2>
-<button onclick="location.reload()" class="bg-slate-700 px-4 py-2 rounded">Restart</button>
+<h2 id="scoreText"></h2>
+<button onclick="location.reload()" class="mt-4 bg-slate-700 px-4 py-2">Restart</button>
 </div>
-
-</main>
 
 <script>
 
-const subjects = ['islamic','general_knowledge','current_affairs','maths','english'];
+let data=[],idx=0,score=0;
 
-let selected = null;
-let quizData = [];
-let idx = 0;
-let score = 0;
+function shuffle(a){
+for(let i=a.length-1;i>0;i--){
+const j=Math.floor(Math.random()*(i+1));
+[a[i],a[j]]=[a[j],a[i]];
+}
+return a;
+}
 
-// SUBJECT BUTTONS
-const subjectDiv = document.getElementById('subjects');
-subjects.forEach(s=>{
-    const b=document.createElement('button');
-    b.innerText=s.replace('_',' ');
-    b.className='bg-slate-700 p-3 rounded hover:bg-slate-600';
-    b.onclick=()=>{
-        selected=s;
-        document.getElementById('startBtn').disabled=false;
-        document.getElementById('startBtn').classList.remove('opacity-50');
-    }
-    subjectDiv.appendChild(b);
+function getBasePath(){
+return window.location.pathname.substring(0,window.location.pathname.lastIndexOf('/'));
+}
+
+async function startQuiz(){
+
+const sub=document.getElementById('subject').value;
+
+try{
+
+const url=getBasePath()+"/"+sub+".csv";
+const res=await fetch(url);
+
+const text=await res.text();
+
+// FIX: handle broken lines safely
+const rawRows=text.split('\n');
+
+// rebuild rows properly (skip broken ones)
+let rows=[];
+let temp="";
+
+rawRows.forEach(line=>{
+if(line.split(',').length>=3){
+if(temp) rows.push(temp);
+temp=line;
+}else{
+temp+=" "+line;
+}
 });
+if(temp) rows.push(temp);
 
-document.getElementById('count').oninput=e=>{
-    document.getElementById('countVal').innerText=e.target.value;
-};
+// remove header
+rows=rows.slice(1);
 
-// BASE PATH FIX FOR GITHUB PAGES
-function getBasePath() {
-    return window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+data=rows.map(r=>{
+
+const p=r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+
+if(p.length<3) return null;
+
+let q=p[0].replace(/^"|"$/g,'').trim();
+let wrongRaw=(p[1]||"").replace(/^"|"$/g,'').trim();
+let correct=(p[2]||"").replace(/^"|"$/g,'').trim();
+
+// clean undefined
+if(!q || !correct) return null;
+
+let wrong=wrongRaw.includes('|') ? wrongRaw.split('|') : wrongRaw.split(',');
+
+wrong=wrong.map(x=>x.trim()).filter(x=>x && x!=="undefined");
+
+// ensure at least 3 wrong answers
+while(wrong.length<3){
+wrong.push("N/A");
 }
 
-// SHUFFLE
-function shuffle(arr){
-    for(let i=arr.length-1;i>0;i--){
-        const j=Math.floor(Math.random()*(i+1));
-        [arr[i],arr[j]]=[arr[j],arr[i]];
-    }
-    return arr;
+let opts=shuffle([...wrong.slice(0,3),correct]);
+
+return {q,opts,correct};
+
+}).filter(x=>x);
+
+document.getElementById('setup').classList.add('hidden');
+document.getElementById('quiz').classList.remove('hidden');
+
+showQ();
+
+}catch(e){
+alert("CSV error. Fix format.");
+console.error(e);
 }
 
-async function startQuiz() {
-    const count = document.getElementById('count').value;
-
-    try {
-        const base = getBasePath();
-        const url = `${base}/${selected}.csv`;
-
-        console.log("Fetching:", url);
-
-        const res = await fetch(url);
-        if(!res.ok) throw new Error("CSV load failed");
-
-        const text = await res.text();
-
-        const rows = text.split('\n').slice(1).filter(r=>r.trim());
-
-        quizData = rows.map(r=>{
-            const parts = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-
-            let question = parts[0].replace(/^"|"$/g,'').trim();
-            let wrongRaw = parts[1].replace(/^"|"$/g,'').trim();
-            let correct = parts[2].replace(/^"|"$/g,'').trim();
-
-            // HANDLE WRONG CHOICES
-            let wrongChoices;
-
-            if(wrongRaw.includes('|')) {
-                wrongChoices = wrongRaw.split('|');
-            } else {
-                wrongChoices = wrongRaw.split(',');
-            }
-
-            wrongChoices = wrongChoices.map(x=>x.trim()).filter(x=>x);
-
-            let options = [...wrongChoices, correct];
-
-            options = shuffle(options);
-
-            return { q:question, opts:options, correct:correct };
-        })
-        .sort(()=>Math.random()-0.5)
-        .slice(0,count);
-
-        document.getElementById('setup').classList.add('hidden');
-        document.getElementById('quiz').classList.remove('hidden');
-
-        showQ();
-
-    } catch(e) {
-        alert("Error loading CSV. Check console.");
-        console.error(e);
-    }
 }
 
-function showQ() {
-    const q=quizData[idx];
-    document.getElementById('qText').innerText=q.q;
+function showQ(){
+const q=data[idx];
+document.getElementById('qText').innerText=q.q;
 
-    const div=document.getElementById('opts');
-    div.innerHTML='';
+const div=document.getElementById('opts');
+div.innerHTML='';
 
-    q.opts.forEach(o=>{
-        const b=document.createElement('button');
-        b.innerText=o;
-        b.className='block w-full bg-slate-700 p-3 mb-2 rounded hover:bg-slate-600';
-        b.onclick=()=>answer(o);
-        div.appendChild(b);
-    });
+q.opts.forEach(o=>{
+const b=document.createElement('button');
+b.innerText=o;
+b.className='block w-full bg-slate-700 p-3 mb-2';
+b.onclick=()=>ans(o);
+div.appendChild(b);
+});
 }
 
-function answer(sel) {
-    if(sel===quizData[idx].correct) score++;
-    idx++;
+function ans(sel){
+if(sel===data[idx].correct) score++;
+idx++;
 
-    if(idx<quizData.length) showQ();
-    else finish();
+if(idx<data.length) showQ();
+else finish();
 }
 
-function finish() {
-    document.getElementById('quiz').classList.add('hidden');
-    document.getElementById('result').classList.remove('hidden');
+function finish(){
+document.getElementById('quiz').classList.add('hidden');
+document.getElementById('result').classList.remove('hidden');
 
-    const percent=Math.round((score/quizData.length)*100);
-    document.getElementById('scoreText').innerText=`Score: ${percent}%`;
+document.getElementById('scoreText').innerText=
+"Score: "+Math.round((score/data.length)*100)+"%";
 }
 
 </script>
