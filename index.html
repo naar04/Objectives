@@ -1,254 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduQuery | Interactive MCQ Mastery</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .hidden { display: none; }
-        /* Custom Scrollbar for review list */
-        #review-list::-webkit-scrollbar { width: 6px; }
-        #review-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduQuery | Interactive MCQ Mastery</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body { font-family: 'Inter', sans-serif; background:#0f172a; color:#f8fafc; }
+.glass { background:rgba(30,41,59,0.7); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); }
+.hidden { display:none; }
+</style>
 </head>
+
 <body class="min-h-screen flex flex-col items-center p-4">
 
-    <header class="w-full max-w-4xl text-center my-12">
-        <h1 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">
-            EduQuery Interactive
-        </h1>
-        <p class="text-slate-400 text-lg">High-performance MCQ practice for competitive exams.</p>
-    </header>
+<header class="text-center my-10">
+<h1 class="text-4xl font-bold text-blue-400">EduQuery</h1>
+<p class="text-slate-400">MCQ Practice System</p>
+</header>
 
-    <main class="w-full max-w-2xl glass rounded-2xl p-6 md:p-10 shadow-2xl">
-        
-        <!-- STEP 1: SETUP -->
-        <div id="setup-screen">
-            <h2 class="text-2xl font-semibold mb-6">Configure Your Session</h2>
-            
-            <label class="block text-sm text-slate-400 mb-2">Select Subject</label>
-            <div id="subject-grid" class="grid grid-cols-2 gap-4 mb-8">
-                <!-- Buttons injected by JS -->
-            </div>
+<main class="w-full max-w-2xl glass p-6 rounded-xl">
 
-            <label class="block text-sm text-slate-400 mb-2">Number of Questions: <span id="q-count-val" class="text-blue-400 font-bold">10</span></label>
-            <input type="range" id="q-count" min="5" max="50" value="10" step="5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 mb-8">
+<!-- SETUP -->
+<div id="setup">
+<h2 class="text-xl mb-4">Select Subject</h2>
+<div id="subjects" class="grid grid-cols-2 gap-3 mb-6"></div>
 
-            <button onclick="startQuiz()" id="start-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition duration-300 opacity-50 cursor-not-allowed" disabled>
-                Initialize Quiz Engine
-            </button>
-        </div>
+<label>Questions: <span id="countVal">10</span></label>
+<input type="range" id="count" min="5" max="50" step="5" value="10" class="w-full mb-6">
 
-        <!-- STEP 2: QUIZ -->
-        <div id="quiz-screen" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <span id="progress-text" class="text-sm font-mono text-blue-400">Question 1/10</span>
-                <div class="h-2 w-32 bg-slate-700 rounded-full overflow-hidden">
-                    <div id="progress-bar" class="h-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
-                </div>
-            </div>
-            
-            <h3 id="question-text" class="text-xl mb-8 leading-relaxed">Loading Question...</h3>
-            
-            <div id="options-container" class="space-y-4">
-                <!-- Options injected by JS -->
-            </div>
-        </div>
+<button id="startBtn" onclick="startQuiz()" disabled class="w-full bg-blue-600 py-3 rounded opacity-50">Start Quiz</button>
+</div>
 
-        <!-- STEP 3: RESULTS -->
-        <div id="result-screen" class="hidden text-center">
-            <div id="score-circle" class="inline-flex items-center justify-center w-32 h-32 rounded-full border-4 border-blue-500 mb-6 text-3xl font-bold">
-                0%
-            </div>
-            <h2 class="text-3xl font-bold mb-2" id="result-title">Quiz Complete!</h2>
-            <p id="weakness-alert" class="text-amber-400 text-sm mb-6"></p>
+<!-- QUIZ -->
+<div id="quiz" class="hidden">
+<h3 id="qText" class="mb-6"></h3>
+<div id="opts"></div>
+</div>
 
-            <div class="space-y-4 text-left mt-8">
-                <h4 class="font-semibold border-b border-slate-700 pb-2">Review Mistakes</h4>
-                <div id="review-list" class="max-h-60 overflow-y-auto pr-2 space-y-4">
-                    <!-- Mistakes injected by JS -->
-                </div>
-            </div>
+<!-- RESULT -->
+<div id="result" class="hidden text-center">
+<h2 id="scoreText" class="text-2xl mb-4"></h2>
+<button onclick="location.reload()" class="bg-slate-700 px-4 py-2 rounded">Restart</button>
+</div>
 
-            <button onclick="location.reload()" class="mt-8 w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl transition">
-                Return to Dashboard
-            </button>
-        </div>
-    </main>
+</main>
 
-    <footer class="mt-12 text-slate-500 text-sm">
-        &copy; 2026 EduQuery SPA • Optimized for CSV Performance
-    </footer>
+<script>
 
-    <script>
-        // 1. Fixed the subjects array syntax error
-        const subjects = ['islamic', 'general_knowledge', 'Current_Affairs', 'Maths', 'English'];
-        let currentSubject = null;
-        let quizData = [];
-        let currentIdx = 0;
-        let score = 0;
-        let mistakes = [];
+const subjects = ['islamic','general_knowledge','current_affairs','maths','english'];
 
-        // INITIALIZE SUBJECT BUTTONS
-        const subjectGrid = document.getElementById('subject-grid');
-        subjects.forEach(sub => {
-            const btn = document.createElement('button');
-            btn.className = 'subject-btn p-4 rounded-xl border border-slate-700 bg-slate-800/50 hover:border-blue-500 transition text-sm font-medium';
-            btn.innerText = sub.replace('_', ' ');
-            btn.onclick = () => selectSubject(sub, btn);
-            subjectGrid.appendChild(btn);
-        });
+let selected = null;
+let quizData = [];
+let idx = 0;
+let score = 0;
 
-        document.getElementById('q-count').oninput = function() {
-            document.getElementById('q-count-val').innerText = this.value;
-        };
+const subjectDiv = document.getElementById('subjects');
+subjects.forEach(s=>{
+    const b=document.createElement('button');
+    b.innerText=s.replace('_',' ');
+    b.className='bg-slate-700 p-3 rounded';
+    b.onclick=()=>{
+        selected=s;
+        document.getElementById('startBtn').disabled=false;
+        document.getElementById('startBtn').classList.remove('opacity-50');
+    }
+    subjectDiv.appendChild(b);
+});
 
-        function selectSubject(sub, btn) {
-            currentSubject = sub;
-            document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('border-blue-500', 'bg-blue-900/20'));
-            btn.classList.add('border-blue-500', 'bg-blue-900/20');
-            const startBtn = document.getElementById('start-btn');
-            startBtn.disabled = false;
-            startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
+document.getElementById('count').oninput=e=>{
+    document.getElementById('countVal').innerText=e.target.value;
+};
 
-        // Helper to shuffle arrays
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        }
+// ✅ KEY FIX: dynamic base path
+function getBasePath() {
+    return window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+}
 
-        async function startQuiz() {
-            const count = parseInt(document.getElementById('q-count').value);
-            
-            try {
-                const response = await fetch(`./${currentSubject.toLowerCase()}.csv`);
-                if (!response.ok) throw new Error("CSV not found");
-                const text = await response.text();
-                
-                // Parse CSV based on: Question, Wrong1, Wrong2, Wrong3, Correct
-                const rows = text.split('\n').filter(row => row.trim() !== '').slice(1);
-                
-                quizData = rows.map(row => {
-                    // This regex handles potential commas inside quotes in CSV
-                    const parts = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    const question = parts[0].replace(/^"|"$/g, '');
-                    const correctAnswer = parts[4].trim().replace(/^"|"$/g, '');
-                    
-                    // Collect all choices and shuffle them
-                    let choices = [
-                        parts[1].trim().replace(/^"|"$/g, ''), 
-                        parts[2].trim().replace(/^"|"$/g, ''), 
-                        parts[3].trim().replace(/^"|"$/g, ''), 
-                        correctAnswer
-                    ];
-                    
-                    return {
-                        q: question,
-                        opts: shuffle(choices),
-                        ans: correctAnswer
-                    };
-                }).sort(() => 0.5 - Math.random()).slice(0, count);
+async function startQuiz() {
+    const count = document.getElementById('count').value;
 
-                document.getElementById('setup-screen').classList.add('hidden');
-                document.getElementById('quiz-screen').classList.remove('hidden');
-                showQuestion();
-            } catch (err) {
-                alert("Error: Ensure '" + currentSubject.toLowerCase() + ".csv' exists in the root folder.");
-                console.error(err);
-            }
-        }
+    try {
+        const base = getBasePath();
+        const url = `${base}/${selected}.csv`;
 
-        function showQuestion() {
-            const q = quizData[currentIdx];
-            document.getElementById('progress-text').innerText = `Question ${currentIdx + 1}/${quizData.length}`;
-            document.getElementById('progress-bar').style.width = `${((currentIdx) / quizData.length) * 100}%`;
-            document.getElementById('question-text').innerText = q.q;
-            
-            const container = document.getElementById('options-container');
-            container.innerHTML = '';
-            
-            q.opts.forEach(opt => {
-                const b = document.createElement('button');
-                b.className = 'w-full p-4 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-left transition active:scale-[0.98]';
-                b.innerText = opt;
-                b.onclick = () => handleAnswer(opt);
-                container.appendChild(b);
-            });
-        }
+        console.log("Fetching:", url);
 
-        function handleAnswer(selected) {
-            const q = quizData[currentIdx];
-            if (selected === q.ans) {
-                score++;
-            } else {
-                mistakes.push({ q: q.q, your: selected, correct: q.ans });
-            }
+        const res = await fetch(url);
+        if(!res.ok) throw new Error("CSV load failed");
 
-            currentIdx++;
-            if (currentIdx < quizData.length) {
-                showQuestion();
-            } else {
-                finishQuiz();
-            }
-        }
+        const text = await res.text();
 
-        function finishQuiz() {
-            document.getElementById('quiz-screen').classList.add('hidden');
-            document.getElementById('result-screen').classList.remove('hidden');
-            
-            const percentage = Math.round((score / quizData.length) * 100);
-            document.getElementById('score-circle').innerText = `${percentage}%`;
-            
-            const history = JSON.parse(localStorage.getItem('edu_history') || '[]');
-            history.push({ sub: currentSubject, score: percentage, date: new Date() });
-            localStorage.setItem('edu_history', JSON.stringify(history));
+        const rows = text.split('\n').slice(1).filter(r=>r.trim());
 
-            const list = document.getElementById('review-list');
-            list.innerHTML = ''; 
-            if (mistakes.length === 0) {
-                list.innerHTML = '<p class="text-emerald-400">Perfect score! No mistakes to review.</p>';
-            } else {
-                mistakes.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'text-sm bg-slate-900 p-3 rounded-lg border-l-2 border-red-500 mb-3';
-                    div.innerHTML = `
-                        <p class="font-medium mb-1">${m.q}</p>
-                        <p class="text-red-400 text-xs">❌ ${m.your}</p>
-                        <p class="text-emerald-400 text-xs">✅ ${m.correct}</p>
-                    `;
-                    list.appendChild(div);
-                });
-            }
-            analyzeHistory(history);
-        }
+        quizData = rows.map(r=>{
+            const p=r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
-        function analyzeHistory(history) {
-            const subScores = {};
-            history.forEach(entry => {
-                if(!subScores[entry.sub]) subScores[entry.sub] = [];
-                subScores[entry.sub].push(entry.score);
-            });
+            const q=p[0];
+            const correct=p[4];
 
-            let weakSub = "";
-            let minAvg = 101;
+            let opts=[p[1],p[2],p[3],correct];
 
-            for(let s in subScores) {
-                const avg = subScores[s].reduce((a,b) => a+b)/subScores[s].length;
-                if(avg < minAvg) { minAvg = avg; weakSub = s; }
-            }
-            
-            if(weakSub && history.length > 1) {
-                document.getElementById('weakness-alert').innerText = `Insight: Your performance in ${weakSub.replace('_', ' ')} is lower than average. Focus there!`;
-            }
-        }
-    </script>
+            opts.sort(()=>Math.random()-0.5);
+
+            return {q,opts,correct};
+        }).sort(()=>Math.random()-0.5).slice(0,count);
+
+        document.getElementById('setup').classList.add('hidden');
+        document.getElementById('quiz').classList.remove('hidden');
+
+        showQ();
+
+    } catch(e) {
+        alert("Error loading CSV. Check console.");
+        console.error(e);
+    }
+}
+
+function showQ() {
+    const q=quizData[idx];
+    document.getElementById('qText').innerText=q.q;
+
+    const div=document.getElementById('opts');
+    div.innerHTML='';
+
+    q.opts.forEach(o=>{
+        const b=document.createElement('button');
+        b.innerText=o;
+        b.className='block w-full bg-slate-700 p-3 mb-2 rounded';
+        b.onclick=()=>answer(o);
+        div.appendChild(b);
+    });
+}
+
+function answer(sel) {
+    if(sel===quizData[idx].correct) score++;
+    idx++;
+
+    if(idx<quizData.length) showQ();
+    else finish();
+}
+
+function finish() {
+    document.getElementById('quiz').classList.add('hidden');
+    document.getElementById('result').classList.remove('hidden');
+
+    const percent=Math.round((score/quizData.length)*100);
+    document.getElementById('scoreText').innerText=`Score: ${percent}%`;
+}
+
+</script>
+
 </body>
 </html>
