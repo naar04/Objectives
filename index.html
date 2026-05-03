@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EduQuery MCQ</title>
+<title>EduQuery Quiz</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -41,7 +41,7 @@ body { background:#0f172a; color:#fff; font-family:sans-serif; }
 
 <script>
 
-let data=[],idx=0,score=0;
+let data=[], idx=0, score=0;
 
 function shuffle(a){
 for(let i=a.length-1;i>0;i--){
@@ -55,6 +55,11 @@ function getBasePath(){
 return window.location.pathname.substring(0,window.location.pathname.lastIndexOf('/'));
 }
 
+// REMOVE A. B. C. LABELS
+function cleanOption(text){
+return text.replace(/^[A-D]\.\s*/i,'').trim();
+}
+
 async function startQuiz(){
 
 const sub=document.getElementById('subject').value;
@@ -62,57 +67,46 @@ const sub=document.getElementById('subject').value;
 try{
 
 const url=getBasePath()+"/"+sub+".csv";
+console.log("Fetching:",url);
+
 const res=await fetch(url);
+if(!res.ok) throw new Error("Fetch failed");
 
 const text=await res.text();
 
-// FIX: handle broken lines safely
-const rawRows=text.split('\n');
+const rows=text.split('\n').slice(1).filter(r=>r.trim());
 
-// rebuild rows properly (skip broken ones)
-let rows=[];
-let temp="";
+data = rows.map(row=>{
 
-rawRows.forEach(line=>{
-if(line.split(',').length>=3){
-if(temp) rows.push(temp);
-temp=line;
-}else{
-temp+=" "+line;
-}
-});
-if(temp) rows.push(temp);
+const parts=row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
-// remove header
-rows=rows.slice(1);
+// REQUIRE EXACT 3 COLUMNS
+if(parts.length !== 3) return null;
 
-data=rows.map(r=>{
+let question = parts[0].replace(/^"|"$/g,'').trim();
+let wrongRaw = parts[1].replace(/^"|"$/g,'').trim();
+let correct = parts[2].replace(/^"|"$/g,'').trim();
 
-const p=r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+if(!question || !correct) return null;
 
-if(p.length<3) return null;
+// CLEAN LABELS
+correct = cleanOption(correct);
 
-let q=p[0].replace(/^"|"$/g,'').trim();
-let wrongRaw=(p[1]||"").replace(/^"|"$/g,'').trim();
-let correct=(p[2]||"").replace(/^"|"$/g,'').trim();
+// SPLIT WRONG CHOICES
+let wrong = wrongRaw.includes('|') ? wrongRaw.split('|') : wrongRaw.split(',');
 
-// clean undefined
-if(!q || !correct) return null;
+wrong = wrong.map(x=>cleanOption(x)).filter(x=>x);
 
-let wrong=wrongRaw.includes('|') ? wrongRaw.split('|') : wrongRaw.split(',');
+// NEED AT LEAST 3 WRONG
+if(wrong.length < 3) return null;
 
-wrong=wrong.map(x=>x.trim()).filter(x=>x && x!=="undefined");
+let options = shuffle([...wrong.slice(0,3), correct]);
 
-// ensure at least 3 wrong answers
-while(wrong.length<3){
-wrong.push("N/A");
-}
+return {q:question, opts:options, correct};
 
-let opts=shuffle([...wrong.slice(0,3),correct]);
+}).filter(Boolean);
 
-return {q,opts,correct};
-
-}).filter(x=>x);
+if(data.length === 0) throw new Error("No valid questions");
 
 document.getElementById('setup').classList.add('hidden');
 document.getElementById('quiz').classList.remove('hidden');
@@ -120,7 +114,7 @@ document.getElementById('quiz').classList.remove('hidden');
 showQ();
 
 }catch(e){
-alert("CSV error. Fix format.");
+alert("CSV format issue. Open console (F12).");
 console.error(e);
 }
 
@@ -136,13 +130,13 @@ div.innerHTML='';
 q.opts.forEach(o=>{
 const b=document.createElement('button');
 b.innerText=o;
-b.className='block w-full bg-slate-700 p-3 mb-2';
-b.onclick=()=>ans(o);
+b.className='block w-full bg-slate-700 p-3 mb-2 rounded hover:bg-slate-600';
+b.onclick=()=>answer(o);
 div.appendChild(b);
 });
 }
 
-function ans(sel){
+function answer(sel){
 if(sel===data[idx].correct) score++;
 idx++;
 
@@ -154,8 +148,8 @@ function finish(){
 document.getElementById('quiz').classList.add('hidden');
 document.getElementById('result').classList.remove('hidden');
 
-document.getElementById('scoreText').innerText=
-"Score: "+Math.round((score/data.length)*100)+"%";
+document.getElementById('scoreText').innerText =
+"Score: " + Math.round((score/data.length)*100) + "%";
 }
 
 </script>
