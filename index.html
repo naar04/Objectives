@@ -37,7 +37,7 @@ body { font-family: 'Inter', sans-serif; background:#0f172a; color:#f8fafc; }
 
 <!-- QUIZ -->
 <div id="quiz" class="hidden">
-<h3 id="qText" class="mb-6"></h3>
+<h3 id="qText" class="mb-6 text-lg"></h3>
 <div id="opts"></div>
 </div>
 
@@ -58,11 +58,12 @@ let quizData = [];
 let idx = 0;
 let score = 0;
 
+// SUBJECT BUTTONS
 const subjectDiv = document.getElementById('subjects');
 subjects.forEach(s=>{
     const b=document.createElement('button');
     b.innerText=s.replace('_',' ');
-    b.className='bg-slate-700 p-3 rounded';
+    b.className='bg-slate-700 p-3 rounded hover:bg-slate-600';
     b.onclick=()=>{
         selected=s;
         document.getElementById('startBtn').disabled=false;
@@ -75,9 +76,18 @@ document.getElementById('count').oninput=e=>{
     document.getElementById('countVal').innerText=e.target.value;
 };
 
-// ✅ KEY FIX: dynamic base path
+// BASE PATH FIX FOR GITHUB PAGES
 function getBasePath() {
     return window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+}
+
+// SHUFFLE
+function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
 }
 
 async function startQuiz() {
@@ -97,17 +107,31 @@ async function startQuiz() {
         const rows = text.split('\n').slice(1).filter(r=>r.trim());
 
         quizData = rows.map(r=>{
-            const p=r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            const parts = r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
-            const q=p[0];
-            const correct=p[4];
+            let question = parts[0].replace(/^"|"$/g,'').trim();
+            let wrongRaw = parts[1].replace(/^"|"$/g,'').trim();
+            let correct = parts[2].replace(/^"|"$/g,'').trim();
 
-            let opts=[p[1],p[2],p[3],correct];
+            // HANDLE WRONG CHOICES
+            let wrongChoices;
 
-            opts.sort(()=>Math.random()-0.5);
+            if(wrongRaw.includes('|')) {
+                wrongChoices = wrongRaw.split('|');
+            } else {
+                wrongChoices = wrongRaw.split(',');
+            }
 
-            return {q,opts,correct};
-        }).sort(()=>Math.random()-0.5).slice(0,count);
+            wrongChoices = wrongChoices.map(x=>x.trim()).filter(x=>x);
+
+            let options = [...wrongChoices, correct];
+
+            options = shuffle(options);
+
+            return { q:question, opts:options, correct:correct };
+        })
+        .sort(()=>Math.random()-0.5)
+        .slice(0,count);
 
         document.getElementById('setup').classList.add('hidden');
         document.getElementById('quiz').classList.remove('hidden');
@@ -130,7 +154,7 @@ function showQ() {
     q.opts.forEach(o=>{
         const b=document.createElement('button');
         b.innerText=o;
-        b.className='block w-full bg-slate-700 p-3 mb-2 rounded';
+        b.className='block w-full bg-slate-700 p-3 mb-2 rounded hover:bg-slate-600';
         b.onclick=()=>answer(o);
         div.appendChild(b);
     });
