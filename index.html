@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduQuery Quiz</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { background:#0f172a; color:#fff; font-family:sans-serif; }
+.hidden { display:none; }
+</style>
+</head>
+
+<body class="p-6">
+
+<h1 class="text-3xl mb-6 text-center text-blue-400">EduQuery Quiz</h1>
+
+<div id="setup">
+<select id="subject" class="p-2 mb-4 bg-slate-700">
+<option value="islamic">Islamic</option>
+<option value="general_knowledge">General Knowledge</option>
+<option value="current_affairs">Current Affairs</option>
+<option value="maths">Maths</option>
+<option value="english">English</option>
+</select>
+
+<button onclick="startQuiz()" class="bg-blue-600 px-4 py-2 rounded">Start</button>
+</div>
+
+<div id="quiz" class="hidden">
+<h2 id="qText" class="mb-4"></h2>
+<div id="opts"></div>
+</div>
+
+<div id="result" class="hidden text-center">
+<h2 id="scoreText"></h2>
+<button onclick="location.reload()" class="mt-4 bg-slate-700 px-4 py-2">Restart</button>
+</div>
+
+<script>
+
+let data=[], idx=0, score=0;
+
+function shuffle(a){
+for(let i=a.length-1;i>0;i--){
+const j=Math.floor(Math.random()*(i+1));
+[a[i],a[j]]=[a[j],a[i]];
+}
+return a;
+}
+
+function getBasePath(){
+return window.location.pathname.substring(0,window.location.pathname.lastIndexOf('/'));
+}
+
+// REMOVE A. B. C. LABELS
+function cleanOption(text){
+return text.replace(/^[A-D]\.\s*/i,'').trim();
+}
+
+async function startQuiz(){
+
+const sub=document.getElementById('subject').value;
+
+try{
+
+const url=getBasePath()+"/"+sub+".csv";
+console.log("Fetching:",url);
+
+const res=await fetch(url);
+if(!res.ok) throw new Error("Fetch failed");
+
+const text=await res.text();
+
+const rows=text.split('\n').slice(1).filter(r=>r.trim());
+
+data = rows.map(row=>{
+
+const parts=row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+
+// REQUIRE EXACT 3 COLUMNS
+if(parts.length !== 3) return null;
+
+let question = parts[0].replace(/^"|"$/g,'').trim();
+let wrongRaw = parts[1].replace(/^"|"$/g,'').trim();
+let correct = parts[2].replace(/^"|"$/g,'').trim();
+
+if(!question || !correct) return null;
+
+// CLEAN LABELS
+correct = cleanOption(correct);
+
+// SPLIT WRONG CHOICES
+let wrong = wrongRaw.includes('|') ? wrongRaw.split('|') : wrongRaw.split(',');
+
+wrong = wrong.map(x=>cleanOption(x)).filter(x=>x);
+
+// NEED AT LEAST 3 WRONG
+if(wrong.length < 3) return null;
+
+let options = shuffle([...wrong.slice(0,3), correct]);
+
+return {q:question, opts:options, correct};
+
+}).filter(Boolean);
+
+if(data.length === 0) throw new Error("No valid questions");
+
+document.getElementById('setup').classList.add('hidden');
+document.getElementById('quiz').classList.remove('hidden');
+
+showQ();
+
+}catch(e){
+alert("CSV format issue. Open console (F12).");
+console.error(e);
+}
+
+}
+
+function showQ(){
+const q=data[idx];
+document.getElementById('qText').innerText=q.q;
+
+const div=document.getElementById('opts');
+div.innerHTML='';
+
+q.opts.forEach(o=>{
+const b=document.createElement('button');
+b.innerText=o;
+b.className='block w-full bg-slate-700 p-3 mb-2 rounded hover:bg-slate-600';
+b.onclick=()=>answer(o);
+div.appendChild(b);
+});
+}
+
+function answer(sel){
+if(sel===data[idx].correct) score++;
+idx++;
+
+if(idx<data.length) showQ();
+else finish();
+}
+
+function finish(){
+document.getElementById('quiz').classList.add('hidden');
+document.getElementById('result').classList.remove('hidden');
+
+document.getElementById('scoreText').innerText =
+"Score: " + Math.round((score/data.length)*100) + "%";
+}
+
+</script>
+
+</body>
+</html>
