@@ -1,157 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EduQuery Quiz</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<style>
-body { background:#0f172a; color:#fff; font-family:sans-serif; }
-.hidden { display:none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduQuery Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background:#0f172a; color:#fff; font-family:sans-serif; }
+        .hidden { display:none; }
+        .review-item { border-bottom: 1px solid #334155; padding: 10px 0; }
+    </style>
 </head>
 
 <body class="p-6">
 
 <h1 class="text-3xl mb-6 text-center text-blue-400">EduQuery Quiz</h1>
 
-<div id="setup">
-<select id="subject" class="p-2 mb-4 bg-slate-700">
-<option value="islamic">Islamic</option>
-<option value="general_knowledge">General Knowledge</option>
-<option value="current_affairs">Current Affairs</option>
-<option value="maths">Maths</option>
-<option value="english">English</option>
-</select>
+<div id="setup" class="max-w-md mx-auto bg-slate-800 p-6 rounded-lg shadow-xl">
+    <label class="block mb-2">Select Subject:</label>
+    <select id="subject" class="w-full p-2 mb-4 bg-slate-700 rounded border border-slate-600">
+        <option value="islamic">Islamic</option>
+        <option value="general_knowledge">General Knowledge</option>
+        <option value="current_affairs">Current Affairs</option>
+        <option value="maths">Maths</option>
+        <option value="english">English</option>
+    </select>
 
-<button onclick="startQuiz()" class="bg-blue-600 px-4 py-2 rounded">Start</button>
+    <label class="block mb-2">Number of Questions (5-100):</label>
+    <input type="number" id="qLimit" value="10" min="5" max="100" class="w-full p-2 mb-6 bg-slate-700 rounded border border-slate-600">
+
+    <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold">Start Quiz</button>
 </div>
 
-<div id="quiz" class="hidden">
-<h2 id="qText" class="mb-4"></h2>
-<div id="opts"></div>
+<div id="quiz" class="hidden max-w-2xl mx-auto">
+    <h2 id="qText" class="text-xl mb-6 font-semibold"></h2>
+    <div id="opts"></div>
 </div>
 
-<div id="result" class="hidden text-center">
-<h2 id="scoreText"></h2>
-<button onclick="location.reload()" class="mt-4 bg-slate-700 px-4 py-2">Restart</button>
+<div id="result" class="hidden max-w-2xl mx-auto">
+    <div class="text-center mb-8">
+        <h2 id="scoreText" class="text-4xl font-bold text-green-400"></h2>
+        <button onclick="location.reload()" class="mt-4 bg-blue-600 px-6 py-2 rounded">Restart Quiz</button>
+    </div>
+    
+    <div class="bg-slate-800 p-6 rounded-lg">
+        <h3 class="text-xl mb-4 border-b border-slate-600 pb-2">Review Results</h3>
+        <div id="reviewList"></div>
+    </div>
 </div>
 
 <script>
-
-let data=[], idx=0, score=0;
+let data=[], idx=0, score=0, userAnswers=[];
 
 function shuffle(a){
-for(let i=a.length-1;i>0;i--){
-const j=Math.floor(Math.random()*(i+1));
-[a[i],a[j]]=[a[j],a[i]];
-}
-return a;
+    for(let i=a.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
 }
 
 function getBasePath(){
-return window.location.pathname.substring(0,window.location.pathname.lastIndexOf('/'));
+    return window.location.pathname.substring(0,window.location.pathname.lastIndexOf('/'));
 }
 
-// REMOVE A. B. C. LABELS
 function cleanOption(text){
-return text.replace(/^[A-D]\.\s*/i,'').trim();
+    return text.replace(/^[A-D]\.\s*/i,'').trim();
 }
 
 async function startQuiz(){
+    const sub=document.getElementById('subject').value;
+    const limit=parseInt(document.getElementById('qLimit').value) || 10;
 
-const sub=document.getElementById('subject').value;
+    try{
+        const url=getBasePath()+"/"+sub+".csv";
+        const res=await fetch(url);
+        if(!res.ok) throw new Error("Fetch failed");
 
-try{
+        const text=await res.text();
+        const rows=text.split('\n').slice(1).filter(r=>r.trim());
 
-const url=getBasePath()+"/"+sub+".csv";
-console.log("Fetching:",url);
+        let allData = rows.map(row=>{
+            const parts=row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            if(parts.length !== 3) return null;
 
-const res=await fetch(url);
-if(!res.ok) throw new Error("Fetch failed");
+            let question = parts[0].replace(/^"|"$/g,'').trim();
+            let wrongRaw = parts[1].replace(/^"|"$/g,'').trim();
+            let correct = parts[2].replace(/^"|"$/g,'').trim();
 
-const text=await res.text();
+            if(!question || !correct) return null;
+            correct = cleanOption(correct);
 
-const rows=text.split('\n').slice(1).filter(r=>r.trim());
+            let wrong = wrongRaw.includes('|') ? wrongRaw.split('|') : wrongRaw.split(',');
+            wrong = wrong.map(x=>cleanOption(x)).filter(x=>x);
 
-data = rows.map(row=>{
+            if(wrong.length < 3) return null;
+            let options = shuffle([...wrong.slice(0,3), correct]);
 
-const parts=row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            return {q:question, opts:options, correct};
+        }).filter(Boolean);
 
-// REQUIRE EXACT 3 COLUMNS
-if(parts.length !== 3) return null;
+        if(allData.length === 0) throw new Error("No valid questions");
 
-let question = parts[0].replace(/^"|"$/g,'').trim();
-let wrongRaw = parts[1].replace(/^"|"$/g,'').trim();
-let correct = parts[2].replace(/^"|"$/g,'').trim();
+        // Shuffle and Slice to user requested limit
+        data = shuffle(allData).slice(0, limit);
 
-if(!question || !correct) return null;
+        document.getElementById('setup').classList.add('hidden');
+        document.getElementById('quiz').classList.remove('hidden');
 
-// CLEAN LABELS
-correct = cleanOption(correct);
-
-// SPLIT WRONG CHOICES
-let wrong = wrongRaw.includes('|') ? wrongRaw.split('|') : wrongRaw.split(',');
-
-wrong = wrong.map(x=>cleanOption(x)).filter(x=>x);
-
-// NEED AT LEAST 3 WRONG
-if(wrong.length < 3) return null;
-
-let options = shuffle([...wrong.slice(0,3), correct]);
-
-return {q:question, opts:options, correct};
-
-}).filter(Boolean);
-
-if(data.length === 0) throw new Error("No valid questions");
-
-document.getElementById('setup').classList.add('hidden');
-document.getElementById('quiz').classList.remove('hidden');
-
-showQ();
-
-}catch(e){
-alert("CSV format issue. Open console (F12).");
-console.error(e);
-}
-
+        showQ();
+    }catch(e){
+        alert("Error loading quiz. Check console.");
+        console.error(e);
+    }
 }
 
 function showQ(){
-const q=data[idx];
-document.getElementById('qText').innerText=q.q;
+    const q=data[idx];
+    document.getElementById('qText').innerText= `Question ${idx + 1}: ${q.q}`;
 
-const div=document.getElementById('opts');
-div.innerHTML='';
+    const div=document.getElementById('opts');
+    div.innerHTML='';
 
-q.opts.forEach(o=>{
-const b=document.createElement('button');
-b.innerText=o;
-b.className='block w-full bg-slate-700 p-3 mb-2 rounded hover:bg-slate-600';
-b.onclick=()=>answer(o);
-div.appendChild(b);
-});
+    q.opts.forEach(o=>{
+        const b=document.createElement('button');
+        b.innerText=o;
+        b.className='block w-full text-left bg-slate-700 p-4 mb-3 rounded border border-slate-600 hover:bg-slate-600 transition';
+        b.onclick=()=>answer(o);
+        div.appendChild(b);
+    });
 }
 
 function answer(sel){
-if(sel===data[idx].correct) score++;
-idx++;
+    userAnswers.push(sel);
+    if(sel===data[idx].correct) score++;
+    idx++;
 
-if(idx<data.length) showQ();
-else finish();
+    if(idx<data.length) showQ();
+    else finish();
 }
 
 function finish(){
-document.getElementById('quiz').classList.add('hidden');
-document.getElementById('result').classList.remove('hidden');
+    document.getElementById('quiz').classList.add('hidden');
+    document.getElementById('result').classList.remove('hidden');
 
-document.getElementById('scoreText').innerText =
-"Score: " + Math.round((score/data.length)*100) + "%";
+    document.getElementById('scoreText').innerText = 
+        "Score: " + Math.round((score/data.length)*100) + "% (" + score + "/" + data.length + ")";
+
+    const reviewList = document.getElementById('reviewList');
+    reviewList.innerHTML = '';
+
+    data.forEach((item, i) => {
+        const isCorrect = userAnswers[i] === item.correct;
+        const div = document.createElement('div');
+        div.className = 'review-item';
+        div.innerHTML = `
+            <p class="font-medium mb-1">${i+1}. ${item.q}</p>
+            <p class="text-sm ${isCorrect ? 'text-green-400' : 'text-red-400'}">
+                Your Answer: ${userAnswers[i]}
+            </p>
+            ${!isCorrect ? `<p class="text-sm text-green-400">Correct Answer: ${item.correct}</p>` : ''}
+        `;
+        reviewList.appendChild(div);
+    });
 }
-
 </script>
 
 </body>
