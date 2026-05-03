@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduQuery | Interactive MCQ Mastery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .card-hover:hover { transform: translateY(-5px); border-color: #38bdf8; transition: all 0.3s ease; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <!-- SEO Header -->
+    <header class="w-full max-w-4xl text-center my-12">
+        <h1 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">
+            EduQuery Interactive
+        </h1>
+        <p class="text-slate-400 text-lg">High-performance MCQ practice for competitive exams.</p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-2xl glass rounded-2xl p-6 md:p-10 shadow-2xl">
+        
+        <!-- STEP 1: SUBJECT & CONFIG SELECTION -->
+        <div id="setup-screen">
+            <h2 class="text-2xl font-semibold mb-6">Configure Your Session</h2>
+            
+            <label class="block text-sm text-slate-400 mb-2">Select Subject</label>
+            <div id="subject-grid" class="grid grid-cols-2 gap-4 mb-8">
+                <!-- JS Inject Buttons Here -->
+            </div>
+
+            <label class="block text-sm text-slate-400 mb-2">Number of Questions: <span id="q-count-val" class="text-blue-400 font-bold">10</span></label>
+            <input type="range" id="q-count" min="5" max="50" value="10" step="5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 mb-8">
+
+            <button onclick="startQuiz()" id="start-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition duration-300 opacity-50 cursor-not-allowed" disabled>
+                Initialize Quiz Engine
+            </button>
+        </div>
+
+        <!-- STEP 2: QUIZ INTERFACE -->
+        <div id="quiz-screen" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <span id="progress-text" class="text-sm font-mono text-blue-400">Question 1/10</span>
+                <div class="h-2 w-32 bg-slate-700 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-blue-500 transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <h3 id="question-text" class="text-xl mb-8 leading-relaxed">Loading Question...</h3>
+            
+            <div id="options-container" class="space-y-4">
+                <!-- Options Injected Here -->
+            </div>
+        </div>
+
+        <!-- STEP 3: RESULTS & ANALYTICS -->
+        <div id="result-screen" class="hidden text-center">
+            <div id="score-circle" class="inline-flex items-center justify-center w-32 h-32 rounded-full border-4 border-blue-500 mb-6 text-3xl font-bold">
+                0%
+            </div>
+            <h2 class="text-3xl font-bold mb-2" id="result-title">Quiz Complete!</h2>
+            <p id="weakness-alert" class="text-amber-400 text-sm mb-6"></p>
+
+            <div class="space-y-4 text-left mt-8">
+                <h4 class="font-semibold border-b border-slate-700 pb-2">Review Mistakes</h4>
+                <div id="review-list" class="max-h-60 overflow-y-auto pr-2 space-y-4">
+                    <!-- Mistakes Injected Here -->
+                </div>
+            </div>
+
+            <button onclick="location.reload()" class="mt-8 w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl transition">
+                Return to Dashboard
+            </button>
+        </div>
+    </main>
+
+    <footer class="mt-12 text-slate-500 text-sm">
+        &copy; 2024 EduQuery SPA • Optimized for GitHub Pages
+    </footer>
+
+    <script>
+        // CONFIGURATION
+        const subjects = ['Mathematics', 'Physics', 'Biology', 'Chemistry', 'CS'];
+        let currentSubject = null;
+        let quizData = [];
+        let currentIdx = 0;
+        let score = 0;
+        let mistakes = [];
+
+        // INITIALIZE UI
+        const subjectGrid = document.getElementById('subject-grid');
+        subjects.forEach(sub => {
+            const btn = document.createElement('button');
+            btn.className = 'subject-btn p-4 rounded-xl border border-slate-700 bg-slate-800/50 hover:border-blue-500 transition text-sm font-medium';
+            btn.innerText = sub;
+            btn.onclick = () => selectSubject(sub, btn);
+            subjectGrid.appendChild(btn);
+        });
+
+        // SLIDER UPDATE
+        document.getElementById('q-count').oninput = function() {
+            document.getElementById('q-count-val').innerText = this.value;
+        };
+
+        function selectSubject(sub, btn) {
+            currentSubject = sub;
+            document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('border-blue-500', 'bg-blue-900/20'));
+            btn.classList.add('border-blue-500', 'bg-blue-900/20');
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = false;
+            startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        async function startQuiz() {
+            const count = parseInt(document.getElementById('q-count').value);
+            
+            try {
+                // Fetching CSV from relative path ./questions/[subject].csv
+                const response = await fetch(`./questions/${currentSubject.toLowerCase()}.csv`);
+                if (!response.ok) throw new Error("CSV not found");
+                const text = await response.text();
+                
+                // Parse CSV (Simplified)
+                const rows = text.split('\n').filter(row => row.trim() !== '').slice(1);
+                quizData = rows.map(row => {
+                    const parts = row.split(',');
+                    return {
+                        q: parts[0],
+                        opts: [parts[1], parts[2], parts[3], parts[4]],
+                        ans: parts[5].trim()
+                    };
+                }).sort(() => 0.5 - Math.random()).slice(0, count);
+
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('quiz-screen').classList.remove('hidden');
+                showQuestion();
+            } catch (err) {
+                alert("Error: Ensure questions/" + currentSubject.toLowerCase() + ".csv exists.");
+            }
+        }
+
+        function showQuestion() {
+            const q = quizData[currentIdx];
+            document.getElementById('progress-text').innerText = `Question ${currentIdx + 1}/${quizData.length}`;
+            document.getElementById('progress-bar').style.width = `${((currentIdx) / quizData.length) * 100}%`;
+            document.getElementById('question-text').innerText = q.q;
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            q.opts.forEach(opt => {
+                const b = document.createElement('button');
+                b.className = 'w-full p-4 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-left transition';
+                b.innerText = opt;
+                b.onclick = () => handleAnswer(opt);
+                container.appendChild(b);
+            });
+        }
+
+        function handleAnswer(selected) {
+            const q = quizData[currentIdx];
+            if (selected === q.ans) {
+                score++;
+            } else {
+                mistakes.push({ q: q.q, your: selected, correct: q.ans });
+            }
+
+            currentIdx++;
+            if (currentIdx < quizData.length) {
+                showQuestion();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        function finishQuiz() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            
+            const percentage = Math.round((score / quizData.length) * 100);
+            document.getElementById('score-circle').innerText = `${percentage}%`;
+            
+            // LocalStorage Save
+            const history = JSON.parse(localStorage.getItem('edu_history') || '[]');
+            history.push({ sub: currentSubject, score: percentage, date: new Date() });
+            localStorage.setItem('edu_history', JSON.stringify(history));
+
+            // Review List
+            const list = document.getElementById('review-list');
+            if (mistakes.length === 0) {
+                list.innerHTML = '<p class="text-emerald-400">Perfect score! No mistakes to review.</p>';
+            } else {
+                mistakes.forEach(m => {
+                    list.innerHTML += `
+                        <div class="text-sm bg-slate-900 p-3 rounded-lg border-l-2 border-red-500">
+                            <p class="font-medium">${m.q}</p>
+                            <p class="text-red-400 text-xs">❌ ${m.your}</p>
+                            <p class="text-emerald-400 text-xs">✅ ${m.correct}</p>
+                        </div>
+                    `;
+                });
+            }
+            
+            analyzeHistory(history);
+        }
+
+        function analyzeHistory(history) {
+            const subScores = {};
+            history.forEach(entry => {
+                if(!subScores[entry.sub]) subScores[entry.sub] = [];
+                subScores[entry.sub].push(entry.score);
+            });
+
+            let weakSub = "";
+            let minAvg = 101;
+
+            for(let s in subScores) {
+                const avg = subScores[s].reduce((a,b) => a+b)/subScores[s].length;
+                if(avg < minAvg) { minAvg = avg; weakSub = s; }
+            }
+            
+            if(weakSub) {
+                document.getElementById('weakness-alert').innerText = `Insight: Your performance in ${weakSub} is lower than average. Focus there!`;
+            }
+        }
+    </script>
+</body>
+</html>
