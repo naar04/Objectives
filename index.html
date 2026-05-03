@@ -9,13 +9,14 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .card-hover:hover { transform: translateY(-5px); border-color: #38bdf8; transition: all 0.3s ease; }
         .hidden { display: none; }
+        /* Custom Scrollbar for review list */
+        #review-list::-webkit-scrollbar { width: 6px; }
+        #review-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4">
 
-    <!-- SEO Header -->
     <header class="w-full max-w-4xl text-center my-12">
         <h1 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">
             EduQuery Interactive
@@ -23,16 +24,15 @@
         <p class="text-slate-400 text-lg">High-performance MCQ practice for competitive exams.</p>
     </header>
 
-    <!-- Main Container -->
     <main class="w-full max-w-2xl glass rounded-2xl p-6 md:p-10 shadow-2xl">
         
-        <!-- STEP 1: SUBJECT & CONFIG SELECTION -->
+        <!-- STEP 1: SETUP -->
         <div id="setup-screen">
             <h2 class="text-2xl font-semibold mb-6">Configure Your Session</h2>
             
             <label class="block text-sm text-slate-400 mb-2">Select Subject</label>
             <div id="subject-grid" class="grid grid-cols-2 gap-4 mb-8">
-                <!-- JS Inject Buttons Here -->
+                <!-- Buttons injected by JS -->
             </div>
 
             <label class="block text-sm text-slate-400 mb-2">Number of Questions: <span id="q-count-val" class="text-blue-400 font-bold">10</span></label>
@@ -43,7 +43,7 @@
             </button>
         </div>
 
-        <!-- STEP 2: QUIZ INTERFACE -->
+        <!-- STEP 2: QUIZ -->
         <div id="quiz-screen" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <span id="progress-text" class="text-sm font-mono text-blue-400">Question 1/10</span>
@@ -55,11 +55,11 @@
             <h3 id="question-text" class="text-xl mb-8 leading-relaxed">Loading Question...</h3>
             
             <div id="options-container" class="space-y-4">
-                <!-- Options Injected Here -->
+                <!-- Options injected by JS -->
             </div>
         </div>
 
-        <!-- STEP 3: RESULTS & ANALYTICS -->
+        <!-- STEP 3: RESULTS -->
         <div id="result-screen" class="hidden text-center">
             <div id="score-circle" class="inline-flex items-center justify-center w-32 h-32 rounded-full border-4 border-blue-500 mb-6 text-3xl font-bold">
                 0%
@@ -70,7 +70,7 @@
             <div class="space-y-4 text-left mt-8">
                 <h4 class="font-semibold border-b border-slate-700 pb-2">Review Mistakes</h4>
                 <div id="review-list" class="max-h-60 overflow-y-auto pr-2 space-y-4">
-                    <!-- Mistakes Injected Here -->
+                    <!-- Mistakes injected by JS -->
                 </div>
             </div>
 
@@ -81,29 +81,28 @@
     </main>
 
     <footer class="mt-12 text-slate-500 text-sm">
-        &copy; 2024 EduQuery SPA • Optimized for GitHub Pages
+        &copy; 2026 EduQuery SPA • Optimized for CSV Performance
     </footer>
 
     <script>
-        // CONFIGURATION
-        const subjects = ['Islamic', 'General_Knowledge', 'Current_Affairs', 'Maths', 'English', '];
+        // 1. Fixed the subjects array syntax error
+        const subjects = ['Islamic', 'General_Knowledge', 'Current_Affairs', 'Maths', 'English'];
         let currentSubject = null;
         let quizData = [];
         let currentIdx = 0;
         let score = 0;
         let mistakes = [];
 
-        // INITIALIZE UI
+        // INITIALIZE SUBJECT BUTTONS
         const subjectGrid = document.getElementById('subject-grid');
         subjects.forEach(sub => {
             const btn = document.createElement('button');
             btn.className = 'subject-btn p-4 rounded-xl border border-slate-700 bg-slate-800/50 hover:border-blue-500 transition text-sm font-medium';
-            btn.innerText = sub;
+            btn.innerText = sub.replace('_', ' ');
             btn.onclick = () => selectSubject(sub, btn);
             subjectGrid.appendChild(btn);
         });
 
-        // SLIDER UPDATE
         document.getElementById('q-count').oninput = function() {
             document.getElementById('q-count-val').innerText = this.value;
         };
@@ -117,23 +116,44 @@
             startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
 
+        // Helper to shuffle arrays
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
         async function startQuiz() {
             const count = parseInt(document.getElementById('q-count').value);
             
             try {
-                // Fetching CSV from relative path ./questions/[subject].csv
                 const response = await fetch(`./${currentSubject.toLowerCase()}.csv`);
                 if (!response.ok) throw new Error("CSV not found");
                 const text = await response.text();
                 
-                // Parse CSV (Simplified)
+                // Parse CSV based on: Question, Wrong1, Wrong2, Wrong3, Correct
                 const rows = text.split('\n').filter(row => row.trim() !== '').slice(1);
+                
                 quizData = rows.map(row => {
-                    const parts = row.split(',');
+                    // This regex handles potential commas inside quotes in CSV
+                    const parts = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    const question = parts[0].replace(/^"|"$/g, '');
+                    const correctAnswer = parts[4].trim().replace(/^"|"$/g, '');
+                    
+                    // Collect all choices and shuffle them
+                    let choices = [
+                        parts[1].trim().replace(/^"|"$/g, ''), 
+                        parts[2].trim().replace(/^"|"$/g, ''), 
+                        parts[3].trim().replace(/^"|"$/g, ''), 
+                        correctAnswer
+                    ];
+                    
                     return {
-                        q: parts[0],
-                        opts: [parts[1], parts[2], parts[3], parts[4]],
-                        ans: parts[5].trim()
+                        q: question,
+                        opts: shuffle(choices),
+                        ans: correctAnswer
                     };
                 }).sort(() => 0.5 - Math.random()).slice(0, count);
 
@@ -141,7 +161,8 @@
                 document.getElementById('quiz-screen').classList.remove('hidden');
                 showQuestion();
             } catch (err) {
-                alert("Error: Ensure questions/" + currentSubject.toLowerCase() + ".csv exists.");
+                alert("Error: Ensure '" + currentSubject.toLowerCase() + ".csv' exists in the root folder.");
+                console.error(err);
             }
         }
 
@@ -156,7 +177,7 @@
             
             q.opts.forEach(opt => {
                 const b = document.createElement('button');
-                b.className = 'w-full p-4 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-left transition';
+                b.className = 'w-full p-4 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-left transition active:scale-[0.98]';
                 b.innerText = opt;
                 b.onclick = () => handleAnswer(opt);
                 container.appendChild(b);
@@ -186,27 +207,26 @@
             const percentage = Math.round((score / quizData.length) * 100);
             document.getElementById('score-circle').innerText = `${percentage}%`;
             
-            // LocalStorage Save
             const history = JSON.parse(localStorage.getItem('edu_history') || '[]');
             history.push({ sub: currentSubject, score: percentage, date: new Date() });
             localStorage.setItem('edu_history', JSON.stringify(history));
 
-            // Review List
             const list = document.getElementById('review-list');
+            list.innerHTML = ''; 
             if (mistakes.length === 0) {
                 list.innerHTML = '<p class="text-emerald-400">Perfect score! No mistakes to review.</p>';
             } else {
                 mistakes.forEach(m => {
-                    list.innerHTML += `
-                        <div class="text-sm bg-slate-900 p-3 rounded-lg border-l-2 border-red-500">
-                            <p class="font-medium">${m.q}</p>
-                            <p class="text-red-400 text-xs">❌ ${m.your}</p>
-                            <p class="text-emerald-400 text-xs">✅ ${m.correct}</p>
-                        </div>
+                    const div = document.createElement('div');
+                    div.className = 'text-sm bg-slate-900 p-3 rounded-lg border-l-2 border-red-500 mb-3';
+                    div.innerHTML = `
+                        <p class="font-medium mb-1">${m.q}</p>
+                        <p class="text-red-400 text-xs">❌ ${m.your}</p>
+                        <p class="text-emerald-400 text-xs">✅ ${m.correct}</p>
                     `;
+                    list.appendChild(div);
                 });
             }
-            
             analyzeHistory(history);
         }
 
@@ -225,8 +245,8 @@
                 if(avg < minAvg) { minAvg = avg; weakSub = s; }
             }
             
-            if(weakSub) {
-                document.getElementById('weakness-alert').innerText = `Insight: Your performance in ${weakSub} is lower than average. Focus there!`;
+            if(weakSub && history.length > 1) {
+                document.getElementById('weakness-alert').innerText = `Insight: Your performance in ${weakSub.replace('_', ' ')} is lower than average. Focus there!`;
             }
         }
     </script>
