@@ -18,7 +18,7 @@
 
 <div id="setup" class="max-w-md mx-auto bg-slate-800 p-6 rounded-lg shadow-xl">
     <label class="block mb-2">Select Subject:</label>
-    <!-- Select2 CSS -->
+
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <div class="max-w-md mx-auto bg-slate-800 p-6 rounded-lg shadow-xl">
@@ -26,7 +26,7 @@
 
     <select id="subject" class="w-full p-2 bg-slate-700 rounded border border-slate-600">
         
-        <option></option> <!-- placeholder -->
+        <option></option>
 
         <optgroup label="🧠 Arts & General">
             <option value="english">English</option>
@@ -50,10 +50,7 @@
     </select>
 </div>
 
-<!-- jQuery (required for Select2) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
@@ -65,40 +62,40 @@ $(document).ready(function() {
     });
 });
 </script>
-    <style>
+
+<style>
 .select2-container--default .select2-selection--single {
     background-color: #334155;
     border: 1px solid #475569;
     height: 42px;
     color: white;
 }
-
 .select2-container--default .select2-selection__rendered {
     color: white;
     line-height: 42px;
 }
-
 .select2-dropdown {
     background-color: #1e293b;
     color: white;
     border: 1px solid #475569;
 }
-
 .select2-results__option {
     background-color: #1e293b;
 }
-
 .select2-results__option--highlighted {
     background-color: #475569 !important;
 }
 </style>
+
     <label class="block mb-2">Number of Questions (5-100):</label>
     <input type="number" id="qLimit" value="10" min="5" max="100" class="w-full p-2 mb-6 bg-slate-700 rounded border border-slate-600">
 
     <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold">Start Quiz</button>
 </div>
 
+<!-- ✅ MODIFIED QUIZ SECTION -->
 <div id="quiz" class="hidden max-w-2xl mx-auto">
+    <h3 id="subjectTitle" class="text-center text-lg text-blue-300 mb-4"></h3>
     <h2 id="qText" class="text-xl mb-6 font-semibold"></h2>
     <div id="opts"></div>
 </div>
@@ -136,6 +133,11 @@ function cleanOption(text){
 
 async function startQuiz(){
     const sub=document.getElementById('subject').value;
+
+    // ✅ NEW: get subject name and display
+    const subText = document.getElementById('subject').selectedOptions[0].text;
+    document.getElementById('subjectTitle').innerText = "Subject: " + subText;
+
     const limit=parseInt(document.getElementById('qLimit').value) || 10;
 
     try{
@@ -168,7 +170,6 @@ async function startQuiz(){
 
         if(allData.length === 0) throw new Error("No valid questions");
 
-        // Shuffle and Slice to user requested limit
         data = shuffle(allData).slice(0, limit);
 
         document.getElementById('setup').classList.add('hidden');
