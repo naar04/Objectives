@@ -18,20 +18,53 @@
 
 <div id="setup" class="max-w-md mx-auto bg-slate-800 p-6 rounded-lg shadow-xl">
     <label class="block mb-2">Select Subject:</label>
-    <select id="subject" class="w-full p-2 mb-4 bg-slate-700 rounded border border-slate-600">
-        <option value="islamic">Islamic</option>
-        <option value="gk">General Knowledge</option>
-        <option value="current_affairspk">Current Affairs Pakistan</option>
-        <option value="maths">Maths</option>
-        <option value="english">English</option>
-        <option value="maths">Mathematics</option>
-        <option value="physics">Physics</option>
-        <option value="chemistry">Chemistry</option>
-        <option value="everyscience">Every Day Science</option>
-        <option value="pakstudies">Pak-Studies</option>
-        <option value="computer">Computer</option>
-    </select>
+    <!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
+<div class="max-w-md mx-auto bg-slate-800 p-6 rounded-lg shadow-xl">
+    <label class="block mb-2 text-white">Select Subject:</label>
+
+    <select id="subject" class="w-full p-2 bg-slate-700 rounded border border-slate-600">
+        
+        <option></option> <!-- placeholder -->
+
+        <optgroup label="🧠 Arts & General">
+            <option value="english">English</option>
+            <option value="gk">General Knowledge</option>
+            <option value="current_affairspk">Current Affairs Pakistan</option>
+            <option value="islamic">Islamic Studies</option>
+            <option value="pakstudies">Pak Studies</option>
+        </optgroup>
+
+        <optgroup label="🔬 Science">
+            <option value="physics">Physics</option>
+            <option value="chemistry">Chemistry</option>
+            <option value="maths">Mathematics</option>
+            <option value="everyscience">Everyday Science</option>
+        </optgroup>
+
+        <optgroup label="💻 Technology">
+            <option value="computer">Computer</option>
+        </optgroup>
+
+    </select>
+</div>
+
+<!-- jQuery (required for Select2) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#subject').select2({
+        placeholder: "🔍 Search or select a subject",
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
     <label class="block mb-2">Number of Questions (5-100):</label>
     <input type="number" id="qLimit" value="10" min="5" max="100" class="w-full p-2 mb-6 bg-slate-700 rounded border border-slate-600">
 
